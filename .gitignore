@@ -1,0 +1,15 @@
+/.tools/
+/.local/
+/web/node_modules/
+/web/test-results/
+/web/playwright-report/
+/internal/api/webdist/*
+!/internal/api/webdist/.keep
+*.exe
+/dist/
+*.pem
+*.key
+*.sqlite*
+*.db
+.env
+.env.*

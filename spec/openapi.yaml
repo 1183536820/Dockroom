@@ -1,0 +1,249 @@
+openapi: 3.1.0
+info: {title: Dockroom M1, version: 1.0.0-dev}
+servers: [{url: /api/v1}]
+security: [{session: []}]
+paths:
+  /plans:
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CopyInput'}
+      responses:
+        '202':
+          description: Single-file preflight ready
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CopyPlan'}
+        default: {$ref: '#/components/responses/Failure'}
+  /jobs:
+    get:
+      responses:
+        '200':
+          description: Most recent visible jobs
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: '#/components/schemas/CopyJob'}}
+    post:
+      parameters: [{name: Idempotency-Key, in: header, required: true, schema: {type: string}}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, required: [planId], properties: {planId: {type: string}}}
+      responses:
+        '202':
+          description: Copy enqueued or previously confirmed
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [jobId, state]
+                properties: {jobId: {type: string}, state: {$ref: '#/components/schemas/JobState'}}
+        default: {$ref: '#/components/responses/Failure'}
+  /jobs/{id}:
+    parameters: [{name: id, in: path, required: true, schema: {type: string}}]
+    get:
+      responses:
+        '200':
+          description: Visible job
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CopyJob'}
+        default: {$ref: '#/components/responses/Failure'}
+  /jobs/{id}/cancel:
+    parameters: [{name: id, in: path, required: true, schema: {type: string}}]
+    post:
+      responses:
+        '204': {description: Cancellation requested}
+        default: {$ref: '#/components/responses/Failure'}
+  /session:
+    post:
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user, password]
+              properties: {user: {type: string}, password: {type: string}}
+      responses:
+        '200': {$ref: '#/components/responses/Identity'}
+        default: {$ref: '#/components/responses/Failure'}
+    delete:
+      parameters: [{$ref: '#/components/parameters/CSRF'}]
+      responses: {'204': {description: Logged out}, default: {$ref: '#/components/responses/Failure'}}
+  /me:
+    get:
+      responses: {'200': {$ref: '#/components/responses/Identity'}, default: {$ref: '#/components/responses/Failure'}}
+  /nodes:
+    get:
+      responses:
+        '200':
+          description: Authorized nodes
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: '#/components/schemas/Node'}}
+        default: {$ref: '#/components/responses/Failure'}
+  /nodes/{id}/roots:
+    parameters:
+      - {in: path, name: id, required: true, schema: {type: string}}
+    get:
+      responses:
+        '200':
+          description: Authorized roots
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: '#/components/schemas/Root'}}
+        default: {$ref: '#/components/responses/Failure'}
+  /fs/list:
+    post:
+      parameters: [{$ref: '#/components/parameters/CSRF'}]
+      requestBody: {$ref: '#/components/requestBodies/Browse'}
+      responses:
+        '200':
+          description: One page of a scoped snapshot
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Listing'}
+        default: {$ref: '#/components/responses/Failure'}
+  /fs/resolve:
+    post:
+      parameters: [{$ref: '#/components/parameters/CSRF'}]
+      requestBody: {$ref: '#/components/requestBodies/Browse'}
+      responses:
+        '200':
+          description: Resolved existing directory within the current root
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Resolved'}
+        default: {$ref: '#/components/responses/Failure'}
+components:
+  securitySchemes:
+    session: {type: apiKey, in: cookie, name: __Host-dockroom}
+  parameters:
+    CSRF: {in: header, name: X-CSRF-Token, required: true, schema: {type: string}}
+  responses:
+    Identity:
+      description: Current identity
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Identity'}
+    Failure:
+      description: Safe error message
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Failure'}
+  requestBodies:
+    Browse:
+      required: true
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Browse'}
+  schemas:
+    CopySource:
+      type: object
+      required: [ref, version]
+      properties: {ref: {$ref: '#/components/schemas/Ref'}, version: {type: string}}
+    CopyInput:
+      type: object
+      required: [action, sources, destination, conflictPolicy]
+      properties:
+        action: {const: copy}
+        sources: {type: array, minItems: 1, maxItems: 1, items: {$ref: '#/components/schemas/CopySource'}}
+        destination: {$ref: '#/components/schemas/Ref'}
+        conflictPolicy: {const: skip}
+    CopyPath:
+      type: object
+      required: [nativePath]
+      properties: {nativePath: {type: string}, sizeBytes: {type: integer, minimum: 0}, state: {type: string, enum: [exists]}}
+    CopyPlan:
+      type: object
+      required: [planId, state, expiresUnix, input, source, target]
+      properties:
+        planId: {type: string}
+        state: {type: string, enum: [ready, expired]}
+        expiresUnix: {type: integer}
+        input: {$ref: '#/components/schemas/CopyInput'}
+        source: {$ref: '#/components/schemas/CopyPath'}
+        target: {$ref: '#/components/schemas/CopyPath'}
+    JobState:
+      type: string
+      enum: [queued, running, waiting_node, verifying, committing, succeeded, skipped, failed, cancelled, needs_review]
+    CopyJob:
+      type: object
+      required: [jobId, state, plan, owner, createdUnix, cancelRequested, confirmedBytes]
+      properties:
+        jobId: {type: string}
+        state: {$ref: '#/components/schemas/JobState'}
+        plan: {$ref: '#/components/schemas/CopyPlan'}
+        owner: {type: string}
+        createdUnix: {type: integer}
+        cancelRequested: {type: boolean}
+        confirmedBytes: {type: integer, minimum: 0}
+        sha256: {type: string}
+        errorCode: {type: string}
+    Ref:
+      type: object
+      additionalProperties: false
+      required: [nodeId, rootId, parts]
+      properties:
+        nodeId: {type: string, pattern: '^[a-z][a-z0-9-]{0,47}$'}
+        rootId: {type: string, pattern: '^[a-z][a-z0-9-]{0,47}$'}
+        parts: {type: array, maxItems: 128, items: {type: string}}
+    Browse:
+      type: object
+      additionalProperties: false
+      required: [ref]
+      properties:
+        ref: {$ref: '#/components/schemas/Ref'}
+        filter: {type: string, maxLength: 512}
+        cursor: {type: string, maxLength: 128}
+        input: {type: string, maxLength: 16384}
+    Identity:
+      type: object
+      required: [user, admin, csrf]
+      properties: {user: {type: string}, admin: {type: boolean}, csrf: {type: string}, localNode: {type: string}}
+    Node:
+      type: object
+      required: [nodeId, os, version, online, lastSeenUnix]
+      properties:
+        nodeId: {type: string}
+        os: {type: string}
+        version: {type: string}
+        online: {type: boolean}
+        lastSeenUnix: {type: integer}
+        state: {type: string, enum: [pending, approved, revoked]}
+        fingerprint: {type: string}
+    Root:
+      type: object
+      required: [rootId, label, mode]
+      properties: {rootId: {type: string}, label: {type: string}, mode: {type: string, enum: [readOnly, readWrite]}, canWrite: {type: boolean}}
+    Entry:
+      type: object
+      required: [name, kind, sizeBytes, mtimeUtc, version, actions]
+      properties:
+        name: {type: string}
+        kind: {type: string, enum: [directory, file, unsupported]}
+        sizeBytes: {type: integer, minimum: 0}
+        mtimeUtc: {type: string, format: date-time}
+        version: {type: string}
+        actions: {type: array, items: {type: string, enum: [open]}}
+    Listing:
+      type: object
+      required: [entries, nativePath, nextCursor, listingId]
+      properties:
+        entries: {type: array, maxItems: 200, items: {$ref: '#/components/schemas/Entry'}}
+        nativePath: {type: string}
+        nextCursor: {type: string}
+        listingId: {type: string}
+    Resolved:
+      type: object
+      required: [ref, nativePath]
+      properties: {ref: {$ref: '#/components/schemas/Ref'}, nativePath: {type: string}}
+    Failure:
+      type: object
+      required: [code, message, requestId, retryable]
+      properties: {code: {type: string}, message: {type: string}, requestId: {type: string}, retryable: {type: boolean}}

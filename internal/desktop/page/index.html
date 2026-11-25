@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>渡柜 · 电脑连接</title><link rel="stylesheet" href="/setup.css"><script type="module" src="/setup.js"></script></head>
+<body><header><div class="brand"><span class="mark" aria-hidden="true"></span><strong>渡柜</strong><span>DOCKROOM</span></div><button id="exit" type="button" hidden>退出渡柜</button></header>
+<main><div class="kicker">WINDOWS / DEVICE SETUP</div><h1>电脑连接</h1><p class="intro">两台电脑打开同一个渡柜程序。一台开主机，另一台填连接码和密钥。</p>
+<p id="notice" role="status">正在读取本机设置…</p>
+<p><a class="primary action" href="/computer/">我的电脑 · 浏览磁盘</a></p>
+<div id="workbench-entry" hidden><a class="action" href="/">打开本机双栏</a></div>
+<section id="folders" hidden><h2>这台电脑的共享文件夹</h2><p>双栏里选中对应电脑，再选这里列出的文件夹。专用收件夹可直接粘贴；新增的文件夹若不适合写入会标为只读。</p><label id="folder-target-row" hidden>开放到 <select id="folder-target"><option value="host">本机主机工作台</option><option value="connected">已连接主机工作台</option></select></label><ul id="folder-list"></ul><button id="add-folder" type="button">添加文件夹…</button></section>
+<div id="cards" class="cards" hidden>
+<section><div class="kicker">01 / HOST</div><h2>让其他电脑加入</h2><p>生成连接码和密钥，只发给可信的人。使用新版密钥连接后，可直接读写当前 Windows 用户能访问的本机磁盘文件。</p>
+<form id="host-form" hidden><div id="host-settings"><label>局域网地址 <select id="address" required></select></label><label>管理员口令 <input id="password" type="password" autocomplete="new-password" minlength="12" maxlength="128" required placeholder="至少 12 个字符"></label><details><summary>高级设置：端口</summary><label>工作台及接入 <input id="browser-port" type="number" min="1024" max="65535" value="8442" required></label><label>设备连接 <input id="device-port" type="number" min="1024" max="65535" value="8443" required></label></details></div><button type="submit" class="primary" id="start-host">开启主机</button></form>
+<div id="host-live" hidden><p class="success">● 主机已开启</p><p id="host-address" class="mono"></p>
+<button id="generate" type="button" class="primary">生成连接码和密钥</button>
+<form id="host-auth" hidden><label>主机管理员口令 <input id="unlock" type="password" required autocomplete="current-password"></label><button type="submit">登录继续</button></form>
+<div id="share" hidden><label for="host-code">发给另一台电脑的连接码</label><textarea id="host-code" readonly rows="3" spellcheck="false"></textarea><button id="copy-code" type="button">复制连接码</button>
+<div id="key-display" hidden><label>本次生成的连接密钥 <input id="host-key" type="password" readonly autocomplete="off"></label><button id="copy-key" type="button">复制密钥</button> <button id="show-key" type="button">显示密钥</button></div>
+<p id="key-note"></p><button id="rotate" type="button" hidden>更换密钥</button> <button id="disable" type="button" hidden>停用新设备接入</button></div></div></section>
+<section><div class="kicker">02 / JOIN</div><h2>连接其他电脑</h2><p>粘贴主机发来的连接码和密钥，连接后即可在双栏中浏览磁盘和收发文件。不用输入 IP，也不用拷贝证书。</p>
+<form id="join-form" hidden><label for="invite">主机连接码</label><textarea id="invite" required rows="3" maxlength="8192" autocomplete="off" spellcheck="false" placeholder="粘贴 DG2. 开头的完整连接码"></textarea>
+<label id="join-key-row">连接密钥 <input id="join-key" type="password" required autocomplete="off" maxlength="128" placeholder="粘贴主机生成的密钥"></label>
+<fieldset id="folder-choice"><legend>开放本机哪个文件夹？</legend><label><input type="radio" name="folder-mode" value="new" checked> 新建专用收件夹 <small>（可收发）</small></label><label><input type="radio" name="folder-mode" value="existing"> 选择已有文件夹 <small>（只读）</small></label><div id="folder-row" hidden><button type="button" id="pick">选择文件夹…</button><output id="folder" class="mono"></output></div></fieldset>
+<p id="replace-note" hidden>将原来开放的文件夹改连新主机；新连接成功保存后，才断开旧连接。文件不会被移动或删除。</p>
+<button id="join-submit" type="submit" class="primary">连接主机</button> <button id="cancel-replace" type="button" hidden>取消更换</button></form>
+<div id="agent-live" hidden><p id="agent-status" role="status"></p><p id="connected-address" class="mono"></p><dl><div id="pair-tag-row" hidden><dt>旧版核对码</dt><dd><strong id="pair-tag" class="mono"></strong></dd></div></dl>
+<a id="remote-entry" class="primary action" href="/computer/" hidden>打开已连接主机双栏</a> <button id="reconnect" type="button">重新连接</button> <button id="replace" type="button">更换主机</button></div></section>
+</div><footer>仅在可信局域网或 VPN 内使用。程序运行期间，本机会保持连接；关闭网页不会退出程序。</footer></main></body></html>

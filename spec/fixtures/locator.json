@@ -1,0 +1,5 @@
+{
+  "windows": { "ref": { "nodeId": "studio-07", "rootId": "out", "parts": ["十一月", "封面 修订.tif"] }, "nativePath": "D:\\交付\\十一月\\封面 修订.tif" },
+  "linux": { "ref": { "nodeId": "archive-01", "rootId": "archive", "parts": ["2026", "空目录"] }, "nativePath": "/srv/archive/2026/空目录" },
+  "synthetic": true
+}
