@@ -10,7 +10,10 @@ import (
 )
 
 func (a *app) diskTransfer(w http.ResponseWriter, r *http.Request) {
-	var b struct{ Direction, Source, Destination, Name, Device, Hub string }
+	var b struct {
+		Direction, Source, Destination, Name, Device, Hub string
+		Directory                                         bool
+	}
 	if !body(w, r, &b) {
 		return
 	}
@@ -29,7 +32,22 @@ func (a *app) diskTransfer(w http.ResponseWriter, r *http.Request) {
 		failure(w, 422, "文件名无效")
 		return
 	}
-	if b.Direction == "send" {
+	endpoint := "/device/disk-file"
+	if b.Directory && b.Direction == "get" {
+		if e := fs.DiskNewDirectory(b.Destination, b.Name); e != nil {
+			if errors.Is(e, os.ErrExist) {
+				failure(w, 409, "目标已有同名目录或文件，未覆盖")
+			} else {
+				failure(w, 422, "无法创建目标目录")
+			}
+			return
+		}
+		w.WriteHeader(204)
+		return
+	}
+	if b.Directory && b.Direction == "send" {
+		method, dir, endpoint = http.MethodPut, b.Destination, "/device/disk-directory"
+	} else if b.Direction == "send" {
 		method, dir = http.MethodPut, b.Destination
 		f, e := fs.DiskSource(b.Source, b.Name)
 		if e != nil {
@@ -50,7 +68,7 @@ func (a *app) diskTransfer(w http.ResponseWriter, r *http.Request) {
 		failure(w, 422, "传输方向无效")
 		return
 	}
-	req, e := http.NewRequestWithContext(r.Context(), method, remote.endpoint+"/device/disk-file?"+url.Values{"dir": {dir}, "name": {b.Name}}.Encode(), reader)
+	req, e := http.NewRequestWithContext(r.Context(), method, remote.endpoint+endpoint+"?"+url.Values{"dir": {dir}, "name": {b.Name}}.Encode(), reader)
 	if e != nil {
 		failure(w, 422, "连接地址无效")
 		return

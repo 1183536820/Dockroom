@@ -21,6 +21,18 @@ func (h *Hub) diskFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	dir, name := r.URL.Query().Get("dir"), r.URL.Query().Get("name")
+	if r.URL.Path == "/device/disk-directory" {
+		if e := fs.DiskNewDirectory(dir, name); e != nil {
+			if errors.Is(e, os.ErrExist) {
+				reject(w, 409, "EXISTS", "目标已有同名目录或文件")
+			} else {
+				reject(w, 422, "CREATE_FAILED", "无法创建目标目录")
+			}
+			return
+		}
+		w.WriteHeader(204)
+		return
+	}
 	ctl := http.NewResponseController(w)
 	deadline := time.Now().Add(4 * time.Hour)
 	ctl.SetReadDeadline(deadline)

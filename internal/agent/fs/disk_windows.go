@@ -69,3 +69,21 @@ func DiskReceive(dir, name string, r io.Reader, size int64) error {
 	published = true
 	return nil
 }
+func DiskNewDirectory(dir, name string) error {
+	if !Part(name) {
+		return ErrUnsafe
+	}
+	p, e := CatalogDirectory(dir)
+	if e != nil {
+		return e
+	}
+	defer p.Close()
+	child, e := openNT(p, name, true, windows.FILE_GENERIC_READ, share, windows.FILE_CREATE, false)
+	if Collision(e) {
+		return os.ErrExist
+	}
+	if e != nil {
+		return e
+	}
+	return child.Close()
+}

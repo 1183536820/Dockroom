@@ -63,12 +63,18 @@ test('Windows pairing, dual-role routing, reconnect, and host replacement',async
     await expect(peer.getByRole('article').nth(1).getByRole('button',{name:/^[A-Z]:/}).first()).toBeVisible();
     const src=join(base,'未共享源'),dst=join(base,'未共享目标');await mkdir(src);await mkdir(dst);
     await writeFile(join(src,'发送.txt'),'forward');await writeFile(join(dst,'下载.txt'),'back');
+    for(const [dir,name] of [[src,'上传资料'],[dst,'下载资料']]){await mkdir(join(dir,name,'子目录','空目录'),{recursive:true});await writeFile(join(dir,name,'子目录','说明.txt'),name);}
     const panes=peer.getByRole('article');for(const [i,path] of [src,dst].entries()){await panes.nth(i).getByLabel('文件夹路径').fill(path);await panes.nth(i).getByText('打开目录',{exact:true}).click()}
     await panes.nth(0).getByRole('button',{name:'发送.txt',exact:true}).click();await panes.nth(0).getByText('发送到对方').click();
     await expect(panes.nth(1).getByText('发送.txt',{exact:true})).toBeVisible();expect(await readFile(join(dst,'发送.txt'),'utf8')).toBe('forward');
     await panes.nth(0).getByText('发送到对方').click();await expect(peer.getByRole('status')).toContainText('同名');expect(await readFile(join(dst,'发送.txt'),'utf8')).toBe('forward');
     await panes.nth(1).getByRole('button',{name:'下载.txt',exact:true}).click();await panes.nth(1).getByText('下载到本机').click();
     await expect(panes.nth(0).getByText('下载.txt',{exact:true})).toBeVisible();expect(await readFile(join(src,'下载.txt'),'utf8')).toBe('back');
+    for(const [i,name] of ['上传资料','下载资料'].entries()){
+      const from=panes.nth(i),to=panes.nth(1-i);await from.getByRole('button',{name:new RegExp(name)}).click();await peer.keyboard.press('Control+c');await to.focus();await peer.keyboard.press('Control+v');
+      await expect(peer.getByRole('status')).toContainText(`已复制 ${name} →`);const target=i?src:dst;expect(await readFile(join(target,name,'子目录','说明.txt'),'utf8')).toBe(name);expect((await lstat(join(target,name,'子目录','空目录'))).isDirectory()).toBe(true);
+      await to.focus();await peer.keyboard.press('Control+v');await expect(peer.getByRole('status')).toContainText('同名');
+    }
     await peer.goto(new URL('/connected/',peer.url()).href);
     const endpoint=await peer.evaluate(()=>fetch('/local/v1/status').then(r=>r.json()));
     expect(endpoint.mode).toBe('readWrite');

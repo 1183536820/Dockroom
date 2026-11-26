@@ -75,6 +75,7 @@ func (h *Hub) Device() http.Handler {
 	m.HandleFunc("POST /device/workbench", h.deviceWorkbench)
 	m.HandleFunc("GET /device/disk-file", h.diskFile)
 	m.HandleFunc("PUT /device/disk-file", h.diskFile)
+	m.HandleFunc("PUT /device/disk-directory", h.diskFile)
 	m.Handle("/workspace/", h.workspaceHandler())
 	m.Handle(relay.Route, h.relay)
 	m.HandleFunc("POST /device/data/publish-permit", h.authorizePublish)
